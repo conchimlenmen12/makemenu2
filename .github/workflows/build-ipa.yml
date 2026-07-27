@@ -1,0 +1,26 @@
+name: Build lara IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Archive
+        run: |
+          xcodebuild -project lara.xcodeproj \
+            -scheme lara \
+            -configuration Release \
+            -archivePath build/lara.xcarchive \
+            archive
+      
+      - name: Upload IPA
+        uses: actions/upload-artifact@v3
+        with:
+          name: lara-ipa
+          path: build/lara.xcarchive
