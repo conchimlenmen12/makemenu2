@@ -30,10 +30,25 @@ jobs:
           xcode-select -p
           swift --version
 
+      - name: install ldid
+        run: |
+          brew update
+          brew install ldid
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          export PATH="$(brew --prefix)/bin:$PATH"
+          echo "===== LDID ====="
+          which ldid
+          ldid --version || true
+
       - name: build
         run: |
           cd lara-0.2
           chmod +x scripts/build_ipa.sh
+          export PATH="$(brew --prefix)/bin:$PATH"
+          echo "===== LDID BEFORE BUILD ====="
+          which ldid
+          ldid --version || true
+          echo "===== BUILD ====="
           ./scripts/build_ipa.sh
 
       - name: show build files
