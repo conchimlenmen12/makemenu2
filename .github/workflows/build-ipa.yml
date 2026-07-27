@@ -1,23 +1,20 @@
-name: Build lara IPA
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      
       - name: Build IPA
         run: |
           cd lara-0.2
-          bash scripts/build_ipa.sh
-      
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: lara-ipa
-          path: lara-0.2/lara.ipa
+          xcodebuild -project lara.xcodeproj \
+            -scheme lara \
+            -configuration Release \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            PROVISIONING_PROFILE="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            clean build
+          
+          # Package as IPA
+          mkdir -p build/Payload
+          cp -r build/Build/Products/Release-iphoneos/lara.app build/Payload/
+          cd build && zip -r ../lara.ipa Payload && cd ..
