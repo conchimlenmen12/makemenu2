@@ -34,16 +34,23 @@ struct DarkBoardExploreView: View {
             }
             updateDisplayedThemes()
         }
-        .onChange(of: searchTerm)     { _ in updateDisplayedThemes() }
-        .onChange(of: filter)         { _ in updateDisplayedThemes() }
+        .onChange(of: searchTerm) { _ in updateDisplayedThemes() }
+        .onChange(of: filter) { _ in updateDisplayedThemes() }
         .onChange(of: gallery.themes) { _ in updateDisplayedThemes() }
         .alert(item: $alert) { a in
-            Alert(title: Text("Theme Gallery"), message: Text(a.message), dismissButton: .default(Text("OK")))
+            Alert(
+                title: Text("Theme Gallery"),
+                message: Text(a.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 
     private func updateDisplayedThemes() {
-        displayedThemes = gallery.filteredThemes(searchTerm: searchTerm, filter: filter)
+        displayedThemes = gallery.filteredThemes(
+            searchTerm: searchTerm,
+            filter: filter
+        )
     }
 
     private var filterBar: some View {
@@ -61,13 +68,18 @@ struct DarkBoardExploreView: View {
                     }
                 }
             } label: {
-                Label(filter.rawValue, systemImage: "line.3.horizontal.decrease.circle")
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(.thinMaterial)
-                    .clipShape(Capsule())
+                Label(
+                    filter.rawValue,
+                    systemImage: "line.3.horizontal.decrease.circle"
+                )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
             }
+
             Spacer()
+
             if gallery.isLoading {
                 ProgressView()
                     .controlSize(.small)
@@ -81,9 +93,11 @@ struct DarkBoardExploreView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Could not load the Cowabunga gallery.")
                     .font(.headline)
+
                 Text(loadError)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
                 Button("Retry") {
                     Task {
                         await gallery.loadThemes(forceRefresh: true)
@@ -96,32 +110,50 @@ struct DarkBoardExploreView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.thinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 18))
+
         } else if displayedThemes.isEmpty && gallery.isLoading {
             VStack(spacing: 12) {
                 ProgressView()
                     .controlSize(.large)
+
                 Text("Loading themes...")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.top, 80)
+
         } else if displayedThemes.isEmpty {
             Text("No themes matched your search.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 80)
+
         } else {
             LazyVStack(spacing: 14) {
                 ForEach(displayedThemes) { theme in
-                    GalleryThemeCard(theme: theme, previewURL: gallery.previewURL(for: theme), isImported: themes.theme(named: theme.name) != nil, isDownloading: gallery.isDownloading(theme)) {
+                    GalleryThemeCard(
+                        theme: theme,
+                        previewURL: gallery.previewURL(for: theme),
+                        isImported: themes.theme(named: theme.name) != nil,
+                        isDownloading: gallery.isDownloading(theme)
+                    ) {
                         Task {
                             do {
-                                try await gallery.downloadAndImport(theme)
-                                alert = DarkBoardExploreAlert(message: "Imported \(theme.name).")
+                                // FIX: truyền themes vào tham số importer
+                                try await gallery.downloadAndImport(
+                                    theme,
+                                    importer: themes
+                                )
+
+                                alert = DarkBoardExploreAlert(
+                                    message: "Imported \(theme.name)."
+                                )
                             } catch {
-                                alert = DarkBoardExploreAlert(message: error.localizedDescription)
+                                alert = DarkBoardExploreAlert(
+                                    message: error.localizedDescription
+                                )
                             }
                         }
                     }
@@ -150,6 +182,7 @@ private struct GalleryThemeCard: View {
                             .frame(height: 180)
                             .frame(maxWidth: .infinity)
                             .clipped()
+
                     default:
                         previewPlaceholder
                     }
@@ -164,22 +197,28 @@ private struct GalleryThemeCard: View {
                         Text(theme.name)
                             .font(.headline)
                             .lineLimit(1)
+
                         Text(theme.contact.displayName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
+
                     Spacer()
+
                     if isImported {
                         Text("Imported")
                             .font(.caption.bold())
                             .foregroundStyle(.green)
                     }
                 }
+
                 Text(theme.description)
 
                 Button {
-                    Task { await onDownload() }
+                    Task {
+                        await onDownload()
+                    }
                 } label: {
                     HStack {
                         if isDownloading {
@@ -187,12 +226,18 @@ private struct GalleryThemeCard: View {
                                 .controlSize(.small)
                                 .tint(.white)
                         } else {
-                            Image(systemName: isImported
-                                  ? "arrow.triangle.2.circlepath"
-                                  : "arrow.down.circle")
+                            Image(
+                                systemName: isImported
+                                    ? "arrow.triangle.2.circlepath"
+                                    : "arrow.down.circle"
+                            )
                         }
 
-                        Text(isImported ? "Reimport Theme" : "Import Theme")
+                        Text(
+                            isImported
+                                ? "Reimport Theme"
+                                : "Import Theme"
+                        )
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -209,11 +254,20 @@ private struct GalleryThemeCard: View {
 
     private var previewPlaceholder: some View {
         ZStack {
-            LinearGradient(colors: [.gray.opacity(0.35), .gray.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(
+                colors: [
+                    .gray.opacity(0.35),
+                    .gray.opacity(0.15)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
             Image(systemName: "app.dashed")
                 .font(.system(size: 34, weight: .medium))
                 .foregroundStyle(.secondary)
         }
-        .frame(height: 180).frame(maxWidth: .infinity)
+        .frame(height: 180)
+        .frame(maxWidth: .infinity)
     }
 }
