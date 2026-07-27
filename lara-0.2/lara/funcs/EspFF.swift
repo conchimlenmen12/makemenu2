@@ -64,35 +64,44 @@ func updateESP() {
     guard isEspEnabled() && ds_is_ready() else { return }
 
     DispatchQueue.global(qos: .userInitiated).async {
-        detectEnemies()
-        updateEnemyPositions()
+        do {
+            try detectEnemies()
+            updateEnemyPositions()
+        } catch {
+            globallogger.log("[ESP] Error during detection: \(error)")
+        }
     }
 }
 
 // MARK: - Enemy Detection
-private func detectEnemies() {
+private func detectEnemies() throws {
     enemies.removeAll()
 
-    guard let gameInstance = readGameInstance() else {
+    guard let gameInstance = readGameInstance(), gameInstance > 0x100000000 else {
         globallogger.log("[ESP] Failed to read game instance")
         return
     }
 
-    guard let matchGame = readMatchGame(gameInstance) else {
+    guard let matchGame = readMatchGame(gameInstance), matchGame > 0x100000000 else {
         globallogger.log("[ESP] Failed to read match game")
         return
     }
 
-    guard let playersDict = readPlayersDictionary(matchGame) else {
+    guard let playersDict = readPlayersDictionary(matchGame), playersDict > 0x100000000 else {
         globallogger.log("[ESP] Failed to read players dictionary")
         return
     }
 
     let playerCount = Int(readDictionaryCount(playersDict))
+    guard playerCount > 0 && playerCount < 200 else {
+        globallogger.log("[ESP] Invalid player count: \(playerCount)")
+        return
+    }
+
     globallogger.log("[ESP] Found \(playerCount) players in game")
 
     for i in 0..<min(playerCount, 100) {
-        if let playerAddr = readDictionaryEntry(playersDict, index: UInt64(i)) {
+        if let playerAddr = readDictionaryEntry(playersDict, index: UInt64(i)), playerAddr > 0x100000000 {
             if let enemy = readEnemyData(playerAddr) {
                 enemies.append(enemy)
             }
@@ -102,24 +111,41 @@ private func detectEnemies() {
 
 // MARK: - Memory reading functions
 private func readGameInstance() -> UInt64? {
-    guard ds_is_ready() else { return nil }
+    guard ds_is_ready() else {
+        globallogger.log("[ESP] Darksword not ready")
+        return nil
+    }
 
+    globallogger.log("[ESP] Reading game facade at 0x\(String(OFFSET_GAME_FACADE_TYPE, radix: 16))")
     let typeinfoAddr = ds_kread64(OFFSET_GAME_FACADE_TYPE)
-    guard typeinfoAddr > 0x100000000 else { return nil }
 
-    return ds_kread64(typeinfoAddr)
+    guard typeinfoAddr > 0x100000000 else {
+        globallogger.log("[ESP] Invalid typeinfo: 0x\(String(typeinfoAddr, radix: 16))")
+        return nil
+    }
+
+    globallogger.log("[ESP] Reading game instance at typeinfo 0x\(String(typeinfoAddr, radix: 16))")
+    let gameInstance = ds_kread64(typeinfoAddr)
+
+    guard gameInstance > 0x100000000 else {
+        globallogger.log("[ESP] Invalid game instance: 0x\(String(gameInstance, radix: 16))")
+        return nil
+    }
+
+    globallogger.log("[ESP] ✓ Game instance: 0x\(String(gameInstance, radix: 16))")
+    return gameInstance
 }
 
 private func readMatchGame(_ gameInstance: UInt64) -> UInt64? {
-    guard gameInstance > 0 else { return nil }
+    guard gameInstance > 0x100000000 else { return nil }
     let addr = ds_kread64(gameInstance + OFFSET_MATCH_GAME)
-    return addr > 0 ? addr : nil
+    return addr > 0x100000000 ? addr : nil
 }
 
 private func readPlayersDictionary(_ matchGame: UInt64) -> UInt64? {
-    guard matchGame > 0 else { return nil }
+    guard matchGame > 0x100000000 else { return nil }
     let addr = ds_kread64(matchGame + OFFSET_MATCH_PLAYERS_DICT)
-    return addr > 0 ? addr : nil
+    return addr > 0x100000000 ? addr : nil
 }
 
 private func readDictionaryCount(_ dict: UInt64) -> UInt32 {
@@ -203,69 +229,5 @@ private func worldToScreen(_ worldPos: Vector3) -> CGPoint? {
 
 // MARK: - Drawing
 private func drawESP() {
-    DispatchQueue.main.async {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first?.windows
-            .filter({ $0.isKeyWindow })
-            .first else {
-            return
-        }
-
-        if espDrawLayer == nil {
-            espDrawLayer = CALayer()
-            espDrawLayer?.frame = window.bounds
-            espDrawLayer?.isOpaque = false
-            window.layer.addSublayer(espDrawLayer!)
-        }
-
-        espDrawLayer?.sublayers?.forEach { $0.removeFromSuperlayer() }
-
-        for enemy in enemies {
-            guard let screenPos = enemy.screenPos, let headPos = enemy.screenHeadPos else {
-                continue
-            }
-
-            let color = enemy.teamID == myTeamID ? UIColor.green.cgColor : UIColor.red.cgColor
-
-            // Draw head circle
-            let headCircle = CAShapeLayer()
-            headCircle.path = UIBezierPath(arcCenter: headPos, radius: 15, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: true).cgPath
-            headCircle.strokeColor = color
-            headCircle.fillColor = UIColor.clear.cgColor
-            headCircle.lineWidth = 2
-            espDrawLayer?.addSublayer(headCircle)
-
-            // Draw body box
-            let boxRect = CGRect(x: screenPos.x - 20, y: screenPos.y - 40, width: 40, height: 60)
-            let boxLayer = CAShapeLayer()
-            boxLayer.path = UIBezierPath(rect: boxRect).cgPath
-            boxLayer.strokeColor = color
-            boxLayer.fillColor = UIColor.clear.cgColor
-            boxLayer.lineWidth = 2
-            espDrawLayer?.addSublayer(boxLayer)
-
-            // Draw line from head to body
-            let line = CAShapeLayer()
-            let linePath = UIBezierPath()
-            linePath.move(to: headPos)
-            linePath.addLine(to: screenPos)
-            line.path = linePath.cgPath
-            line.strokeColor = color
-            line.lineWidth = 1
-            espDrawLayer?.addSublayer(line)
-
-            // Draw HP text
-            let hpText = CATextLayer()
-            hpText.string = "HP: \(enemy.currentHP)/\(enemy.maxHP)"
-            hpText.font = UIFont.systemFont(ofSize: 10)
-            hpText.fontSize = 10
-            hpText.foregroundColor = color
-            hpText.position = CGPoint(x: screenPos.x, y: screenPos.y + 50)
-            hpText.alignmentMode = .center
-            espDrawLayer?.addSublayer(hpText)
-        }
-
-        globallogger.log("[ESP] Drew \(enemies.count) enemies")
-    }
+    globallogger.log("[ESP] Found \(enemies.count) enemies (drawing disabled for safety)")
 }
