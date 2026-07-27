@@ -77,6 +77,7 @@ func updateESP() {
 // MARK: - Main Detection & Drawing
 private func detectAndDrawEnemies() throws {
     let moduleBase = getUnityFrameworkBase()
+    globallogger.log("[ESP] ModuleBase: 0x\(String(moduleBase, radix: 16))")
     guard moduleBase > 0x100000000 else {
         globallogger.log("[ESP] Module base invalid")
         return
@@ -84,37 +85,77 @@ private func detectAndDrawEnemies() throws {
 
     // Read GameFacade
     let gameFacadeTypeInfo = ds_kread64(moduleBase + OFF_GAMEFACADE_TYPEINFO)
-    guard gameFacadeTypeInfo > 0x100000000 else { return }
+    globallogger.log("[ESP] GameFacadeTypeInfo: 0x\(String(gameFacadeTypeInfo, radix: 16))")
+    guard gameFacadeTypeInfo > 0x100000000 else {
+        globallogger.log("[ESP] GameFacadeTypeInfo invalid")
+        return
+    }
 
     let gameFacadeStatic = ds_kread64(gameFacadeTypeInfo + OFF_GAMEFACADE_STATIC)
-    guard gameFacadeStatic > 0x100000000 else { return }
+    globallogger.log("[ESP] GameFacadeStatic: 0x\(String(gameFacadeStatic, radix: 16))")
+    guard gameFacadeStatic > 0x100000000 else {
+        globallogger.log("[ESP] GameFacadeStatic invalid")
+        return
+    }
 
     let matchGame = ds_kread64(gameFacadeStatic + OFF_GAMEFACADE_CURRENTMATCH)
-    guard matchGame > 0x100000000 else { return }
+    globallogger.log("[ESP] MatchGame: 0x\(String(matchGame, radix: 16))")
+    guard matchGame > 0x100000000 else {
+        globallogger.log("[ESP] MatchGame invalid (not in match)")
+        return
+    }
 
     // Read Match object
     let match = ds_kread64(matchGame + OFF_MATCH_MATCH)
-    guard match > 0x100000000 else { return }
+    globallogger.log("[ESP] Match: 0x\(String(match, radix: 16))")
+    guard match > 0x100000000 else {
+        globallogger.log("[ESP] Match invalid")
+        return
+    }
 
     // Read player dictionary
     let playerDict = ds_kread64(match + OFF_MATCH_PLAYERDICT)
-    guard playerDict > 0x100000000 else { return }
+    globallogger.log("[ESP] PlayerDict: 0x\(String(playerDict, radix: 16))")
+    guard playerDict > 0x100000000 else {
+        globallogger.log("[ESP] PlayerDict invalid")
+        return
+    }
 
     let dictCount = Int(ds_kread32(playerDict + OFF_DICT_COUNT))
-    guard dictCount > 0 && dictCount < 200 else { return }
+    globallogger.log("[ESP] DictCount: \(dictCount)")
+    guard dictCount > 0 && dictCount < 200 else {
+        globallogger.log("[ESP] DictCount invalid")
+        return
+    }
 
     let entriesArr = ds_kread64(playerDict + OFF_DICT_ENTRIES)
-    guard entriesArr > 0x100000000 else { return }
+    globallogger.log("[ESP] EntriesArr: 0x\(String(entriesArr, radix: 16))")
+    guard entriesArr > 0x100000000 else {
+        globallogger.log("[ESP] EntriesArr invalid")
+        return
+    }
 
     // Get camera matrix
     let cameraMgr = ds_kread64(matchGame + OFF_MATCH_CAMERA_MGR)
-    guard cameraMgr > 0x100000000 else { return }
+    globallogger.log("[ESP] CameraMgr: 0x\(String(cameraMgr, radix: 16))")
+    guard cameraMgr > 0x100000000 else {
+        globallogger.log("[ESP] CameraMgr invalid")
+        return
+    }
 
     let cameraMain = ds_kread64(cameraMgr + OFF_CAMERA_MGR_MAIN)
-    guard cameraMain > 0x100000000 else { return }
+    globallogger.log("[ESP] CameraMain: 0x\(String(cameraMain, radix: 16))")
+    guard cameraMain > 0x100000000 else {
+        globallogger.log("[ESP] CameraMain invalid")
+        return
+    }
 
     let viewMatrixAddr = ds_kread64(cameraMain + OFF_CAMERA_VIEWMATRIX)
-    guard viewMatrixAddr > 0x100000000 else { return }
+    globallogger.log("[ESP] ViewMatrixAddr: 0x\(String(viewMatrixAddr, radix: 16))")
+    guard viewMatrixAddr > 0x100000000 else {
+        globallogger.log("[ESP] ViewMatrixAddr invalid")
+        return
+    }
 
     // Read projection matrix (16 floats)
     var matrix = [Float](repeating: 0, count: 16)
@@ -134,11 +175,16 @@ private func detectAndDrawEnemies() throws {
         setupESPLayer()
     }
 
+    globallogger.log("[ESP] Processing \(dictCount) players...")
+    var processedCount = 0
+
     // Process each player
     for i in 0..<min(dictCount, 100) {
         let entAddr = entriesArr + OFF_DICT_ENTRIES + UInt64(i) * OFF_DICT_ENTRY_STRIDE
         let playerAddr = ds_kread64(entAddr + OFF_DICT_ENTRY_VALUE)
         guard playerAddr > 0x100000000 else { continue }
+
+        processedCount += 1
 
         // Read player HP
         let hp = Int32(bitPattern: ds_kread32(playerAddr + OFF_PLAYER_HP))
@@ -163,6 +209,8 @@ private func detectAndDrawEnemies() throws {
             drawESPLine(from: headScreen, to: footScreen)
         }
     }
+
+    globallogger.log("[ESP] Processed: \(processedCount) players")
 }
 
 // MARK: - Helper Functions
