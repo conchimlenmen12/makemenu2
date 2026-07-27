@@ -1,39 +1,41 @@
 import Foundation
 import UIKit
 
+// Bridge to get Module_Base from Objective-C
+@_silgen_name("getUnityFrameworkBase")
+func getUnityFrameworkBase() -> UInt64
+
 struct Enemy {
-    var position: Vector3
-    var headPosition: Vector3
-    var teamID: UInt32
-    var isAlive: Bool
+    var screenHeadPos: CGPoint
+    var screenFootPos: CGPoint
     var currentHP: Int32
     var maxHP: Int32
-    var screenPos: CGPoint?
-    var screenHeadPos: CGPoint?
 }
 
-// MARK: - ESP Offsets (from scr tipa FFMAX)
-let OFFSET_GAME_FACADE_TYPE: UInt64 = 0x58CCFD0
-let OFFSET_MATCH_GAME: UInt64 = 0x50
-let OFFSET_MATCH_PLAYERS_DICT: UInt64 = 0x48
-let OFFSET_PLAYER_POSITION: UInt64 = 0x60
-let OFFSET_PLAYER_HEAD_NODE: UInt64 = 0xA8
-let OFFSET_PLAYER_TEAM_ID: UInt64 = 0x150
-let OFFSET_PLAYER_IS_ALIVE: UInt64 = 0x180
-let OFFSET_PLAYER_CURRENT_HP: UInt64 = 0x1A0
-let OFFSET_PLAYER_MAX_HP: UInt64 = 0x1A4
+// MARK: - ESP Offsets (from scr tipa - relative to Module_Base)
+let OFF_GAMEFACADE_TYPEINFO: UInt64 = 0xC3299C8
+let OFF_GAMEFACADE_STATIC: UInt64 = 0xB8
+let OFF_GAMEFACADE_CURRENTMATCH: UInt64 = 0x8
+let OFF_MATCH_MATCH: UInt64 = 0x90
+let OFF_MATCH_PLAYERDICT: UInt64 = 0x148
+let OFF_DICT_COUNT: UInt64 = 0x20
+let OFF_DICT_ENTRIES: UInt64 = 0x18
+let OFF_DICT_ENTRY_STRIDE: UInt64 = 24
+let OFF_DICT_ENTRY_VALUE: UInt64 = 16
 
-// MARK: - Camera offsets
-let OFFSET_CAMERA_MAIN: UInt64 = 0x58C3BC0
-let OFFSET_CAMERA_TRANSFORM: UInt64 = 0x60
-let OFFSET_TRANSFORM_POSITION: UInt64 = 0x60
-let OFFSET_CAMERA_PROJECTION_MATRIX: UInt64 = 0x100
+let OFF_PLAYER_POSITION: UInt64 = 0x60
+let OFF_PLAYER_HEAD: UInt64 = 0x1A8
+let OFF_PLAYER_HP: UInt64 = 0x208
+let OFF_PLAYER_MAX_HP: UInt64 = 0x20C
+
+let OFF_MATCH_CAMERA_MGR: UInt64 = 0xD8
+let OFF_CAMERA_MGR_MAIN: UInt64 = 0x20
+let OFF_CAMERA_VIEWMATRIX: UInt64 = 0x10
+let OFF_VIEWMATRIX_DATA: UInt64 = 0x80
 
 // MARK: - ESP State
-private var espEnabled = false
 private var espDrawLayer: CALayer?
-private var enemies: [Enemy] = []
-private var myTeamID: UInt32 = 0
+private var lastLogTime = Date()
 
 // MARK: - Public API
 func isEspEnabled() -> Bool {
@@ -46,7 +48,6 @@ func setEspEnabled(_ enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: "espFF_enabled")
         let state = enabled ? "ENABLED" : "DISABLED"
         globallogger.log("[ESP] ESP \(state)")
-        espEnabled = enabled
     }
 }
 
@@ -55,19 +56,15 @@ func initializeESP() -> Bool {
         globallogger.log("[ESP] Darksword not ready")
         return false
     }
-
-    globallogger.log("[ESP] Initialized, ready to detect enemies")
+    globallogger.log("[ESP] Initialized")
     return true
 }
-
-private var lastLogTime: Date = Date()
 
 func updateESP() {
     guard isEspEnabled() && ds_is_ready() else { return }
 
     do {
-        try detectEnemies()
-        updateEnemyPositions()
+        try detectAndDrawEnemies()
     } catch {
         let now = Date()
         if now.timeIntervalSince(lastLogTime) > 2 {
@@ -77,117 +74,155 @@ func updateESP() {
     }
 }
 
-// MARK: - Enemy Detection
-private func detectEnemies() throws {
-    enemies.removeAll()
-    globallogger.log("[ESP] Detection stub (memory reads disabled)")
+// MARK: - Main Detection & Drawing
+private func detectAndDrawEnemies() throws {
+    let moduleBase = getUnityFrameworkBase()
+    guard moduleBase > 0x100000000 else {
+        globallogger.log("[ESP] Module base invalid")
+        return
+    }
+
+    // Read GameFacade
+    let gameFacadeTypeInfo = ds_kread64(moduleBase + OFF_GAMEFACADE_TYPEINFO)
+    guard gameFacadeTypeInfo > 0x100000000 else { return }
+
+    let gameFacadeStatic = ds_kread64(gameFacadeTypeInfo + OFF_GAMEFACADE_STATIC)
+    guard gameFacadeStatic > 0x100000000 else { return }
+
+    let matchGame = ds_kread64(gameFacadeStatic + OFF_GAMEFACADE_CURRENTMATCH)
+    guard matchGame > 0x100000000 else { return }
+
+    // Read Match object
+    let match = ds_kread64(matchGame + OFF_MATCH_MATCH)
+    guard match > 0x100000000 else { return }
+
+    // Read player dictionary
+    let playerDict = ds_kread64(match + OFF_MATCH_PLAYERDICT)
+    guard playerDict > 0x100000000 else { return }
+
+    let dictCount = Int(ds_kread32(playerDict + OFF_DICT_COUNT))
+    guard dictCount > 0 && dictCount < 200 else { return }
+
+    let entriesArr = ds_kread64(playerDict + OFF_DICT_ENTRIES)
+    guard entriesArr > 0x100000000 else { return }
+
+    // Get camera matrix
+    let cameraMgr = ds_kread64(matchGame + OFF_MATCH_CAMERA_MGR)
+    guard cameraMgr > 0x100000000 else { return }
+
+    let cameraMain = ds_kread64(cameraMgr + OFF_CAMERA_MGR_MAIN)
+    guard cameraMain > 0x100000000 else { return }
+
+    let viewMatrixAddr = ds_kread64(cameraMain + OFF_CAMERA_VIEWMATRIX)
+    guard viewMatrixAddr > 0x100000000 else { return }
+
+    // Read projection matrix (16 floats)
+    var matrix = [Float](repeating: 0, count: 16)
+    var buffer = [UInt8](repeating: 0, count: 64)
+    ds_kread(viewMatrixAddr + OFF_VIEWMATRIX_DATA, &buffer, 64)
+    buffer.withUnsafeBytes { ptr in
+        let floats = ptr.bindMemory(to: Float.self)
+        for i in 0..<16 {
+            matrix[i] = floats[i]
+        }
+    }
+
+    let screenW = UIScreen.main.bounds.width
+    let screenH = UIScreen.main.bounds.height
+
+    DispatchQueue.main.async {
+        setupESPLayer()
+    }
+
+    // Process each player
+    for i in 0..<min(dictCount, 100) {
+        let entAddr = entriesArr + OFF_DICT_ENTRIES + UInt64(i) * OFF_DICT_ENTRY_STRIDE
+        let playerAddr = ds_kread64(entAddr + OFF_DICT_ENTRY_VALUE)
+        guard playerAddr > 0x100000000 else { continue }
+
+        // Read player HP
+        let hp = Int32(bitPattern: ds_kread32(playerAddr + OFF_PLAYER_HP))
+        guard hp > 0 else { continue }
+
+        let maxHp = Int32(bitPattern: ds_kread32(playerAddr + OFF_PLAYER_MAX_HP))
+
+        // Read positions
+        let headAddr = ds_kread64(playerAddr + OFF_PLAYER_HEAD)
+        guard headAddr > 0x100000000 else { continue }
+
+        let headPos = readVector3(headAddr + OFF_PLAYER_POSITION)
+        let footPos = readVector3(playerAddr + OFF_PLAYER_POSITION)
+
+        // Project to screen
+        guard let headScreen = worldToScreen(headPos, matrix, Float(screenW), Float(screenH)),
+              let footScreen = worldToScreen(footPos, matrix, Float(screenW), Float(screenH)) else {
+            continue
+        }
+
+        DispatchQueue.main.async {
+            drawESPLine(from: headScreen, to: footScreen)
+        }
+    }
 }
 
-// MARK: - Memory reading functions
-private func readGameInstance() -> UInt64? {
-    guard ds_is_ready() else { return nil }
-
-    let typeinfoAddr = ds_kread64(OFFSET_GAME_FACADE_TYPE)
-    guard typeinfoAddr > 0x100000000 else { return nil }
-
-    let gameInstance = ds_kread64(typeinfoAddr)
-    guard gameInstance > 0x100000000 else { return nil }
-
-    return gameInstance
-}
-
-private func readMatchGame(_ gameInstance: UInt64) -> UInt64? {
-    guard gameInstance > 0x100000000 else { return nil }
-    let addr = ds_kread64(gameInstance + OFFSET_MATCH_GAME)
-    return addr > 0x100000000 ? addr : nil
-}
-
-private func readPlayersDictionary(_ matchGame: UInt64) -> UInt64? {
-    guard matchGame > 0x100000000 else { return nil }
-    let addr = ds_kread64(matchGame + OFFSET_MATCH_PLAYERS_DICT)
-    return addr > 0x100000000 ? addr : nil
-}
-
-private func readDictionaryCount(_ dict: UInt64) -> UInt32 {
-    guard dict > 0 else { return 0 }
-    return ds_kread32(dict + 0x18)
-}
-
-private func readDictionaryEntry(_ dict: UInt64, index: UInt64) -> UInt64? {
-    guard dict > 0 else { return nil }
-
-    let entriesAddr = ds_kread64(dict + 0x20)
-    guard entriesAddr > 0 else { return nil }
-
-    let entryAddr = entriesAddr + (index * 32)
-    let playerAddr = ds_kread64(entryAddr + 0x18)
-
-    return playerAddr > 0 ? playerAddr : nil
-}
-
-private func readEnemyData(_ playerAddr: UInt64) -> Enemy? {
-    guard playerAddr > 0 else { return nil }
-
-    let position = readVector3(playerAddr + OFFSET_PLAYER_POSITION)
-    let headPosition = readVector3(playerAddr + OFFSET_PLAYER_HEAD_NODE + OFFSET_TRANSFORM_POSITION)
-    let teamID = ds_kread32(playerAddr + OFFSET_PLAYER_TEAM_ID)
-    let isAlive = ds_kread8(playerAddr + OFFSET_PLAYER_IS_ALIVE) != 0
-    let currentHP = Int32(bitPattern: ds_kread32(playerAddr + OFFSET_PLAYER_CURRENT_HP))
-    let maxHP = Int32(bitPattern: ds_kread32(playerAddr + OFFSET_PLAYER_MAX_HP))
-
-    return Enemy(
-        position: position,
-        headPosition: headPosition,
-        teamID: teamID,
-        isAlive: isAlive,
-        currentHP: currentHP,
-        maxHP: maxHP
-    )
-}
-
+// MARK: - Helper Functions
 private func readVector3(_ addr: UInt64) -> Vector3 {
     guard addr > 0 else { return Vector3() }
-
     var buffer = [UInt8](repeating: 0, count: 12)
     ds_kread(addr, &buffer, 12)
-
     return buffer.withUnsafeBytes { ptr -> Vector3 in
-        let floatPtr = ptr.bindMemory(to: Float.self)
-        return Vector3(x: floatPtr[0], y: floatPtr[1], z: floatPtr[2])
+        let floats = ptr.bindMemory(to: Float.self)
+        return Vector3(x: floats[0], y: floats[1], z: floats[2])
     }
 }
 
-// MARK: - Screen Projection
-private func updateEnemyPositions() {
-    guard !enemies.isEmpty else { return }
+private func worldToScreen(_ worldPos: Vector3, _ matrix: [Float], _ screenW: Float, _ screenH: Float) -> CGPoint? {
+    let x = worldPos.x
+    let y = worldPos.y
+    let z = worldPos.z
 
-    for i in 0..<enemies.count {
-        enemies[i].screenPos = worldToScreen(enemies[i].position)
-        enemies[i].screenHeadPos = worldToScreen(enemies[i].headPosition)
-    }
+    // Simple perspective projection (depth-based)
+    // Objects farther away (larger z) appear smaller
+    let perspective = 500.0 / max(z + 1.0, 0.1)
 
-    drawESP()
-}
+    let screenX = (screenW / 2.0) + (x * Float(perspective))
+    let screenY = (screenH / 2.0) - (y * Float(perspective))
 
-private func worldToScreen(_ worldPos: Vector3) -> CGPoint? {
-    let screenWidth = UIScreen.main.bounds.width
-    let screenHeight = UIScreen.main.bounds.height
-
-    // Simplified projection: use perspective divide
-    // In real scenario, would use camera matrix
-    let perspective = 500.0 / (Double(worldPos.z) + 0.1)
-    let screenX = screenWidth / 2 + CGFloat(Double(worldPos.x) * perspective)
-    let screenY = screenHeight / 2 - CGFloat(Double(worldPos.y) * perspective)
-
-    // Check if on screen
-    guard screenX >= 0, screenX < screenWidth, screenY >= 0, screenY < screenHeight else {
+    guard screenX >= 0 && screenX < screenW && screenY >= 0 && screenY < screenH else {
         return nil
     }
 
-    return CGPoint(x: screenX, y: screenY)
+    return CGPoint(x: CGFloat(screenX), y: CGFloat(screenY))
 }
 
-// MARK: - Drawing
-private func drawESP() {
-    globallogger.log("[ESP] Found \(enemies.count) enemies (drawing disabled for safety)")
+private func setupESPLayer() {
+    guard let window = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first?.windows
+        .first(where: { $0.isKeyWindow }) else {
+        return
+    }
+
+    if espDrawLayer == nil {
+        espDrawLayer = CALayer()
+        espDrawLayer?.frame = window.bounds
+        espDrawLayer?.isOpaque = false
+        window.layer.addSublayer(espDrawLayer!)
+    }
+
+    espDrawLayer?.sublayers?.removeAll()
+}
+
+private func drawESPLine(from: CGPoint, to: CGPoint) {
+    guard let layer = espDrawLayer else { return }
+
+    let lineLayer = CAShapeLayer()
+    let path = UIBezierPath()
+    path.move(to: from)
+    path.addLine(to: to)
+
+    lineLayer.path = path.cgPath
+    lineLayer.strokeColor = UIColor.red.cgColor
+    lineLayer.lineWidth = 1.5
+    layer.addSublayer(lineLayer)
 }
