@@ -32,7 +32,7 @@ struct ContentView: View {
                 DebugSection
                 InlineLogsSection
             }
-            .navigationTitle("lara")
+            .navigationTitle("DS CheatiOSVip")
             .toolbar {
                 if selectedlogsdisplaymode == .toolbar {
                     Button(action: {
