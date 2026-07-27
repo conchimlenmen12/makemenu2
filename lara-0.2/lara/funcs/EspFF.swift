@@ -60,15 +60,19 @@ func initializeESP() -> Bool {
     return true
 }
 
+private var lastLogTime: Date = Date()
+
 func updateESP() {
     guard isEspEnabled() && ds_is_ready() else { return }
 
-    DispatchQueue.global(qos: .userInitiated).async {
-        do {
-            try detectEnemies()
-            updateEnemyPositions()
-        } catch {
-            globallogger.log("[ESP] Error during detection: \(error)")
+    do {
+        try detectEnemies()
+        updateEnemyPositions()
+    } catch {
+        let now = Date()
+        if now.timeIntervalSince(lastLogTime) > 2 {
+            globallogger.log("[ESP] Error: \(error)")
+            lastLogTime = now
         }
     }
 }
@@ -78,27 +82,21 @@ private func detectEnemies() throws {
     enemies.removeAll()
 
     guard let gameInstance = readGameInstance(), gameInstance > 0x100000000 else {
-        globallogger.log("[ESP] Failed to read game instance")
         return
     }
 
     guard let matchGame = readMatchGame(gameInstance), matchGame > 0x100000000 else {
-        globallogger.log("[ESP] Failed to read match game")
         return
     }
 
     guard let playersDict = readPlayersDictionary(matchGame), playersDict > 0x100000000 else {
-        globallogger.log("[ESP] Failed to read players dictionary")
         return
     }
 
     let playerCount = Int(readDictionaryCount(playersDict))
     guard playerCount > 0 && playerCount < 200 else {
-        globallogger.log("[ESP] Invalid player count: \(playerCount)")
         return
     }
-
-    globallogger.log("[ESP] Found \(playerCount) players in game")
 
     for i in 0..<min(playerCount, 100) {
         if let playerAddr = readDictionaryEntry(playersDict, index: UInt64(i)), playerAddr > 0x100000000 {
@@ -111,28 +109,14 @@ private func detectEnemies() throws {
 
 // MARK: - Memory reading functions
 private func readGameInstance() -> UInt64? {
-    guard ds_is_ready() else {
-        globallogger.log("[ESP] Darksword not ready")
-        return nil
-    }
+    guard ds_is_ready() else { return nil }
 
-    globallogger.log("[ESP] Reading game facade at 0x\(String(OFFSET_GAME_FACADE_TYPE, radix: 16))")
     let typeinfoAddr = ds_kread64(OFFSET_GAME_FACADE_TYPE)
+    guard typeinfoAddr > 0x100000000 else { return nil }
 
-    guard typeinfoAddr > 0x100000000 else {
-        globallogger.log("[ESP] Invalid typeinfo: 0x\(String(typeinfoAddr, radix: 16))")
-        return nil
-    }
-
-    globallogger.log("[ESP] Reading game instance at typeinfo 0x\(String(typeinfoAddr, radix: 16))")
     let gameInstance = ds_kread64(typeinfoAddr)
+    guard gameInstance > 0x100000000 else { return nil }
 
-    guard gameInstance > 0x100000000 else {
-        globallogger.log("[ESP] Invalid game instance: 0x\(String(gameInstance, radix: 16))")
-        return nil
-    }
-
-    globallogger.log("[ESP] ✓ Game instance: 0x\(String(gameInstance, radix: 16))")
     return gameInstance
 }
 
