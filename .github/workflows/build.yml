@@ -25,10 +25,10 @@ jobs:
           xcode-version: latest-stable
 
       - name: show xcode version
-        run: xcodebuild -version
-
-      - name: install ldid
-        run: brew install ldid
+        run: |
+          xcodebuild -version
+          xcode-select -p
+          swift --version
 
       - name: build
         run: |
@@ -36,21 +36,29 @@ jobs:
           chmod +x scripts/build_ipa.sh
           ./scripts/build_ipa.sh
 
+      - name: show build files
+        if: always()
+        run: |
+          echo "===== BUILD DIRECTORY ====="
+          find lara-0.2/build -maxdepth 3 -type f -print 2>/dev/null || true
+
       - name: upload artifact (PR only)
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: lara-ipa
           path: |
-            build/lara.ipa
-            build/xcodebuild.log
+            lara-0.2/build/lara.ipa
+            lara-0.2/build/xcodebuild.log
+          if-no-files-found: error
 
       - name: upload release ipa
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: release-ipa
-          path: build/lara.ipa
+          path: lara-0.2/build/lara.ipa
+          if-no-files-found: error
 
   release:
     if: github.event_name != 'pull_request'
@@ -76,17 +84,17 @@ jobs:
             COMMITS="no commits in the last 12 hours"
           fi
 
-          echo "COMMITS<<EOF" >> $GITHUB_ENV
-          echo "$COMMITS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "COMMITS<<EOF" >> "$GITHUB_ENV"
+          echo "$COMMITS" >> "$GITHUB_ENV"
+          echo "EOF"
 
       - name: write release notes
         run: |
           cat <<EOF > release_notes.txt
           lara nightly build
-          
+
           Last 12 hours commits:
-          
+
           ${COMMITS}
           EOF
 
@@ -99,10 +107,10 @@ jobs:
             --title "Nightly" \
             --notes "initial nightly" \
             --prerelease
-      
+
           gh release edit nightly \
             --title "Nightly" \
             --notes-file release_notes.txt \
             --prerelease
-      
+
           gh release upload nightly build/lara.ipa --clobber
