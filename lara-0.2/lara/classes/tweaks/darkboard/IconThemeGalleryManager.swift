@@ -106,7 +106,7 @@ final class IconThemeGalleryManager: ObservableObject {
         downloadingThemeNames.contains(theme.name)
     }
 
-    func downloadAndImport(_ theme: GalleryTheme, importer: IconThemeManager = .shared) async throws {
+    func downloadAndImport(_ theme: GalleryTheme, importer: IconThemeManager) async throws {
         if downloadingThemeNames.contains(theme.name) { return }
         downloadingThemeNames.insert(theme.name)
         defer { downloadingThemeNames.remove(theme.name) }
