@@ -139,16 +139,26 @@ struct VarCleanView: View {
     }
 
     @MainActor
-    private func refresh() async {
-        guard !isrefreshing else { return }
-        isrefreshing = true
-        defer { isrefreshing = false }
+private func refresh() async {
+    guard !isrefreshing else { return }
 
-        let newgroups = await Task.detached(priority: .userInitiated) {
-            loadvarcleangroups()
-        }.value
+    isrefreshing = true
+    defer { isrefreshing = false }
 
-        groups = newgroups
+    let newgroups = loadvarcleangroups()
+
+    groups = newgroups
+
+    if groups.isEmpty {
+        statusmsg = nil
+    } else {
+        let matchcount = groups.reduce(0) {
+            $0 + $1.items.count
+        }
+
+        statusmsg = "Found \(matchcount) matched path\(matchcount == 1 ? "" : "s")."
+    }
+}
         if groups.isEmpty {
             statusmsg = nil
         } else {

@@ -2,22 +2,28 @@ import SwiftUI
 
 struct AimbotFFView: View {
     @ObservedObject var mgr: laramgr
-    @AppStorage("aimbotFF_enabled") private var aimbotEnabled = false
-    @AppStorage("aimbotFF_speed") private var aimSpeedInt = 50
-    @State private var log: String = ""
 
-    private var aimSpeed: Float {
-        get { Float(aimSpeedInt) }
-        set { aimSpeedInt = Int(newValue) }
-    }
+    @AppStorage("aimbotFF_enabled")
+    private var aimbotEnabled = false
+
+    @AppStorage("aimbotFF_speed")
+    private var aimSpeed = 50.0
+
+    @State private var log: String = ""
 
     var body: some View {
         NavigationStack {
             List {
-                Section(header: HeaderLabel(text: "Aimbot Status", icon: "crosshair")) {
+                Section(
+                    header: HeaderLabel(
+                        text: "Aimbot Status",
+                        icon: "crosshair"
+                    )
+                ) {
                     HStack {
                         Text("Darksword Status")
                         Spacer()
+
                         if mgr.dsready {
                             Text("Ready")
                                 .foregroundColor(.green)
@@ -30,21 +36,32 @@ struct AimbotFFView: View {
                     HStack {
                         Text("Aimbot State")
                         Spacer()
+
                         if isAimbotEnabled() {
-                            Label("Active", systemImage: "checkmark.circle.fill")
-                                .foregroundColor(.green)
+                            Label(
+                                "Active",
+                                systemImage: "checkmark.circle.fill"
+                            )
+                            .foregroundColor(.green)
                         } else {
-                            Label("Inactive", systemImage: "circle")
-                                .foregroundColor(.gray)
+                            Label(
+                                "Inactive",
+                                systemImage: "circle"
+                            )
+                            .foregroundColor(.gray)
                         }
                     }
 
-                    Toggle(isOn: Binding(
-                        get: { isAimbotEnabled() },
-                        set: { newValue in
-                            setAimbotEnabled(newValue)
-                        }
-                    )) {
+                    Toggle(
+                        isOn: Binding(
+                            get: {
+                                isAimbotEnabled()
+                            },
+                            set: { newValue in
+                                setAimbotEnabled(newValue)
+                            }
+                        )
+                    ) {
                         HStack {
                             Image(systemName: "target")
                             Text("Enable Aimbot")
@@ -53,20 +70,38 @@ struct AimbotFFView: View {
                     .disabled(!mgr.dsready)
                 }
 
-                Section(header: HeaderLabel(text: "Settings", icon: "slider.horizontal.3")) {
-                    VStack(alignment: .leading, spacing: 8) {
+                Section(
+                    header: HeaderLabel(
+                        text: "Settings",
+                        icon: "slider.horizontal.3"
+                    )
+                ) {
+                    VStack(
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
                         HStack {
                             Text("Aim Speed")
+
                             Spacer()
+
                             Text("\(Int(aimSpeed))%")
                                 .foregroundColor(.blue)
                         }
-                        Slider(value: $aimSpeed, in: 0...100, step: 1)
-                            .disabled(!mgr.dsready)
+
+                        Slider(
+                            value: $aimSpeed,
+                            in: 0...100,
+                            step: 1
+                        )
+                        .disabled(!mgr.dsready)
                     }
                     .padding(.vertical, 8)
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
                         Text("Speed Controls")
                             .font(.caption)
                             .foregroundColor(.gray)
@@ -94,30 +129,57 @@ struct AimbotFFView: View {
                     .padding(.vertical, 4)
                 }
 
-                Section(header: HeaderLabel(text: "Testing", icon: "wrench.adjustable")) {
+                Section(
+                    header: HeaderLabel(
+                        text: "Testing",
+                        icon: "wrench.adjustable"
+                    )
+                ) {
                     Button(action: {
                         testAimbotFF()
                         updateTestLog()
                     }) {
                         HStack {
                             Image(systemName: "play.fill")
+
                             Text("Test Aimbot")
+
                             Spacer()
+
                             if mgr.dsready {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
+                                Image(
+                                    systemName: "checkmark.circle.fill"
+                                )
+                                .foregroundColor(.green)
                             }
                         }
                     }
                     .disabled(!mgr.dsready)
                 }
 
-                Section(header: HeaderLabel(text: "Debug Log", icon: "terminal")) {
+                Section(
+                    header: HeaderLabel(
+                        text: "Debug Log",
+                        icon: "terminal"
+                    )
+                ) {
                     ScrollView {
-                        Text(log.isEmpty ? "(no activity)" : log)
-                            .font(.system(.caption, design: .monospaced))
-                            .padding(8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(
+                            log.isEmpty
+                            ? "(no activity)"
+                            : log
+                        )
+                        .font(
+                            .system(
+                                .caption,
+                                design: .monospaced
+                            )
+                        )
+                        .padding(8)
+                        .frame(
+                            maxWidth: .infinity,
+                            alignment: .leading
+                        )
                     }
                     .frame(height: 200)
                     .background(Color(.systemGray6))
