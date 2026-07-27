@@ -14,13 +14,13 @@ jobs:
       - name: Build Archive
         run: |
           cd lara-0.2
-          xcodebuild -project lara.xcodeproj \
+xcodebuild -project lara.xcodeproj \
   -scheme lara \
   -configuration Release \
-  -archivePath ../build/lara.xcarchive \
+  build \
   CODE_SIGN_IDENTITY="" \
-  CODE_SIGNING_REQUIRED=NO \
-  archive
+  CODE_SIGNING_REQUIRED=NO
+
 
       
       - name: Upload IPA
