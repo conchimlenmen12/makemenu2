@@ -11,20 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Build Archive
+      - name: Build IPA
         run: |
           cd lara-0.2
-xcodebuild -project lara.xcodeproj \
-  -scheme lara \
-  -configuration Release \
-  build \
-  CODE_SIGN_IDENTITY="" \
-  CODE_SIGNING_REQUIRED=NO
-
-
+          bash scripts/build_ipa.sh
       
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: lara-ipa
-          path: build/lara.xcarchive
+          path: lara-0.2/lara.ipa
