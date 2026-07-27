@@ -21,10 +21,28 @@ xcodebuild \
   -archivePath "$PWD/build/lara.xcarchive" \
   2>&1 | tee "$PWD/build/xcodebuild.log"
 
+BUILD_STATUS=${PIPESTATUS[0]}
+
+if [ "$BUILD_STATUS" -ne 0 ]; then
+  echo
+  echo "========================================"
+  echo "XCODEBUILD FAILED - EXIT CODE: $BUILD_STATUS"
+  echo "========================================"
+  echo
+  echo "===== XCODEBUILD LOG ====="
+  cat "$PWD/build/xcodebuild.log"
+  echo
+  exit "$BUILD_STATUS"
+fi
+
+echo
+echo "Xcode archive completed successfully."
+
 APP_PATH="$PWD/build/lara.xcarchive/Products/Applications/lara.app"
 
 if [ ! -d "$APP_PATH" ]; then
-  echo "ERROR: Missing app at $APP_PATH"
+  echo "ERROR: Missing app at:"
+  echo "$APP_PATH"
   exit 1
 fi
 
@@ -47,5 +65,7 @@ ldid -SConfig/lara.entitlements \
 (cd "$PWD/build" && /usr/bin/zip -qry lara.ipa Payload)
 
 echo
-echo "build successful!"
-echo "ipa at: build/lara.ipa"
+echo "========================================"
+echo "BUILD SUCCESSFUL!"
+echo "IPA: build/lara.ipa"
+echo "========================================"
