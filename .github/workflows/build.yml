@@ -30,6 +30,13 @@ jobs:
           xcode-select -p
           swift --version
 
+      - name: install ldid
+        run: |
+          brew update
+          brew install ldid
+          ldid -h || true
+          which ldid
+
       - name: build
         run: |
           cd lara-0.2
@@ -77,50 +84,47 @@ jobs:
           name: release-ipa
           path: build
 
-      - name: write release notes
+      - name: get last 12h commits
+        id: commits
+        shell: bash
         run: |
-          echo "lara nightly build" > release_notes.txt
-          echo "" >> release_notes.txt
-          echo "Last 12 hours commits:" >> release_notes.txt
-          echo "" >> release_notes.txt
-
-          COMMITS=$(git log --since="12 hours ago" --pretty=format:"- %h %s (%an)")
+          COMMITS="$(git log --since='12 hours ago' --pretty=format:'- %h %s (%an)')"
 
           if [ -z "$COMMITS" ]; then
-            echo "no commits in the last 12 hours" >> release_notes.txt
-          else
-            printf '%s\n' "$COMMITS" >> release_notes.txt
+            COMMITS="no commits in the last 12 hours"
           fi
 
-          echo "===== RELEASE NOTES ====="
-          cat release_notes.txt
+          {
+            echo "COMMITS<<EOF"
+            echo "$COMMITS"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: write release notes
+        shell: bash
+        run: |
+          {
+            echo "lara nightly build"
+            echo
+            echo "Last 12 hours commits:"
+            echo
+            echo "$COMMITS"
+          } > release_notes.txt
 
       - name: update nightly release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view nightly >/dev/null 2>&1; then
-            echo "Nightly release already exists"
-          else
-            echo "Creating nightly release..."
+          if ! gh release view nightly >/dev/null 2>&1; then
             gh release create nightly \
               --title "Nightly" \
-              --notes "initial nightly" \
+              --notes-file release_notes.txt \
+              --prerelease
+          else
+            gh release edit nightly \
+              --title "Nightly" \
+              --notes-file release_notes.txt \
               --prerelease
           fi
 
-          echo "Updating nightly release notes..."
-
-          gh release edit nightly \
-            --title "Nightly" \
-            --notes-file release_notes.txt \
-            --prerelease
-
-          echo "Uploading IPA..."
-
-          gh release upload nightly \
-            build/lara.ipa \
-            --clobber
-
-          echo "===== RELEASE COMPLETE ====="
-          gh release view nightly
+          gh release upload nightly build/lara.ipa --clobber
