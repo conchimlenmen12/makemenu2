@@ -109,9 +109,7 @@ struct EspFFView: View {
     private func handleESPToggle(_ enabled: Bool) {
         setEspEnabled(enabled)
         if enabled {
-            ESPManager.shared.startESPLoop()
-        } else {
-            ESPManager.shared.stopESPLoop()
+            globallogger.log("[EspFF] ESP enabled (test only, continuous loop disabled)")
         }
     }
 
