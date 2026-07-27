@@ -30,8 +30,9 @@ jobs:
       - name: install ldid
         run: brew install ldid
 
-      - name: build
+            - name: build
         run: |
+          cd lara-0.2
           chmod +x scripts/build_ipa.sh
           ./scripts/build_ipa.sh
 
