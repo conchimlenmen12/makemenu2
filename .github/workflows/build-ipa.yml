@@ -13,14 +13,15 @@ jobs:
       
       - name: Build Archive
         run: |
+          cd lara-0.2
           xcodebuild -project lara.xcodeproj \
             -scheme lara \
             -configuration Release \
-            -archivePath build/lara.xcarchive \
+            -archivePath ../build/lara.xcarchive \
             archive
       
       - name: Upload IPA
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lara-ipa
           path: build/lara.xcarchive
