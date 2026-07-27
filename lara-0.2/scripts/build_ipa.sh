@@ -18,27 +18,34 @@ xcodebuild \
   CODE_SIGN_IDENTITY="" \
   CODE_SIGN_ENTITLEMENTS="Config/lara.entitlements" \
   archive \
-  -archivePath "$PWD/build/lara.xcarchive" 2>&1 | xcpretty
+  -archivePath "$PWD/build/lara.xcarchive" \
+  2>&1 | tee "$PWD/build/xcodebuild.log"
 
 APP_PATH="$PWD/build/lara.xcarchive/Products/Applications/lara.app"
+
 if [ ! -d "$APP_PATH" ]; then
-  echo "Missing app at $APP_PATH"
+  echo "ERROR: Missing app at $APP_PATH"
   exit 1
 fi
+
 rm -rf "$PWD/build/Payload"
 mkdir -p "$PWD/build/Payload"
+
 cp -R "$APP_PATH" "$PWD/build/Payload/"
 
-plutil -replace UIFileSharingEnabled -bool YES "$PWD/build/Payload/lara.app/Info.plist"
+plutil -replace UIFileSharingEnabled -bool YES \
+  "$PWD/build/Payload/lara.app/Info.plist"
 
 if ! command -v ldid >/dev/null 2>&1; then
-  echo "ERROR: ldid not installed. Install with: brew install ldid" >&2
+  echo "ERROR: ldid not installed"
   exit 1
 fi
-ldid -SConfig/lara.entitlements "$PWD/build/Payload/lara.app/lara"
+
+ldid -SConfig/lara.entitlements \
+  "$PWD/build/Payload/lara.app/lara"
+
 (cd "$PWD/build" && /usr/bin/zip -qry lara.ipa Payload)
 
 echo
 echo "build successful!"
 echo "ipa at: build/lara.ipa"
-exit 0
