@@ -12,26 +12,7 @@ class ESPManager: NSObject {
     }
 
     func startESPLoop() {
-        guard !isRunning else { return }
-        guard ds_is_ready() else {
-            globallogger.log("[ESPManager] Darksword not ready, cannot start ESP")
-            return
-        }
-
-        isRunning = true
-
-        DispatchQueue.main.async {
-            if self.displayLink == nil {
-                self.displayLink = CADisplayLink(
-                    target: self,
-                    selector: #selector(self.updateESPFrame)
-                )
-                self.displayLink?.preferredFramesPerSecond = 30
-                self.displayLink?.add(to: .main, forMode: .common)
-            }
-        }
-
-        globallogger.log("[ESPManager] ESP loop started")
+        globallogger.log("[ESPManager] ESP loop disabled (kernel memory reads cause crashes)")
     }
 
     func stopESPLoop() {
