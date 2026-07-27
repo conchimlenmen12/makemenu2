@@ -15,10 +15,13 @@ jobs:
         run: |
           cd lara-0.2
           xcodebuild -project lara.xcodeproj \
-            -scheme lara \
-            -configuration Release \
-            -archivePath ../build/lara.xcarchive \
-            archive
+  -scheme lara \
+  -configuration Release \
+  -archivePath ../build/lara.xcarchive \
+  CODE_SIGN_IDENTITY="" \
+  CODE_SIGNING_REQUIRED=NO \
+  archive
+
       
       - name: Upload IPA
         uses: actions/upload-artifact@v4
