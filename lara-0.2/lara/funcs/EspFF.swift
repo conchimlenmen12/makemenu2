@@ -80,31 +80,7 @@ func updateESP() {
 // MARK: - Enemy Detection
 private func detectEnemies() throws {
     enemies.removeAll()
-
-    guard let gameInstance = readGameInstance(), gameInstance > 0x100000000 else {
-        return
-    }
-
-    guard let matchGame = readMatchGame(gameInstance), matchGame > 0x100000000 else {
-        return
-    }
-
-    guard let playersDict = readPlayersDictionary(matchGame), playersDict > 0x100000000 else {
-        return
-    }
-
-    let playerCount = Int(readDictionaryCount(playersDict))
-    guard playerCount > 0 && playerCount < 200 else {
-        return
-    }
-
-    for i in 0..<min(playerCount, 100) {
-        if let playerAddr = readDictionaryEntry(playersDict, index: UInt64(i)), playerAddr > 0x100000000 {
-            if let enemy = readEnemyData(playerAddr) {
-                enemies.append(enemy)
-            }
-        }
-    }
+    globallogger.log("[ESP] Detection stub (memory reads disabled)")
 }
 
 // MARK: - Memory reading functions
