@@ -32,8 +32,8 @@ class GameDetector: ObservableObject {
     }
 
     private func updateGameStatus() {
-        let running = isGameProcessRunning()
         let inMatch = isPlayerInMatch()
+        let running = inMatch || canAccessGameMemory()
 
         DispatchQueue.main.async {
             self.isGameRunning = running
@@ -49,61 +49,11 @@ class GameDetector: ObservableObject {
         }
     }
 
-    // Check if Free Fire process is running
-    private func isGameProcessRunning() -> Bool {
-        let processNames = ["FreeFireMAX", "FreeFire", "com.dts.freefireth"]
-
-        var len: size_t = 0
-        var mib: [Int32] = [
-            CTL_KERN,
-            KERN_PROC,
-            KERN_PROC_ALL,
-            0
-        ]
-
-        if sysctl(&mib, 4, nil, &len, nil, 0) != 0 {
-            globallogger.log("[GameDetector] sysctl size query failed")
-            return false
-        }
-
-        guard len > 0 else {
-            globallogger.log("[GameDetector] No process data")
-            return false
-        }
-
-        var processes = [kinfo_proc](
-            repeating: kinfo_proc(),
-            count: len / MemoryLayout<kinfo_proc>.size
-        )
-
-        if sysctl(&mib, 4, &processes, &len, nil, 0) != 0 {
-            globallogger.log("[GameDetector] sysctl read failed")
-            return false
-        }
-
-        let processCount =
-            len / MemoryLayout<kinfo_proc>.size
-
-        for i in 0..<processCount {
-            var process = processes[i]
-
-            let name = String(
-                cString: &process.kp_proc.p_comm.0
-            )
-
-            for processName in processNames {
-                if name.contains(processName) || name == processName {
-                    globallogger.log(
-                        "[GameDetector] Found \(name) running"
-                    )
-                    return true
-                }
-            }
-        }
-
-        globallogger.log("[GameDetector] Free Fire process not found")
-        return false
+    private func canAccessGameMemory() -> Bool {
+        let moduleBase = getUnityFrameworkBase()
+        return moduleBase > 0x100000000
     }
+
 
     // Check if player is in active match (not lobby)
     private func isPlayerInMatch() -> Bool {
