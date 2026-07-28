@@ -93,8 +93,9 @@ final class laramgr: ObservableObject {
         }
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = ds_run()
-            
+            // Kernel exploit not needed for game memory cheats
+            let result = -1  // Simulate failure
+
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.dsrunning = false
@@ -102,19 +103,14 @@ final class laramgr: ObservableObject {
                 if success {
                     self.dsready = true
                     self.dsfailed = false
-                    self.kernbase = ds_get_kernel_base()
-                    self.kernslide = ds_get_kernel_slide()
+                    self.kernbase = 0
+                    self.kernslide = 0
                     self.logmsg("\n(ds) exploit success!")
-                    self.logmsg(String(format: "(ds) kernel_base:  0x%llx", self.kernbase))
-                    self.logmsg(String(format: "(ds) kernel_slide: 0x%llx\n", self.kernslide))
-                    globallogger.log("(ds) exploit success!")
-                    globallogger.log(String(format: "(ds) kernel_base:  0x%llx", self.kernbase))
-                    globallogger.log(String(format: "(ds) kernel_slide: 0x%llx", self.kernslide))
-                    globallogger.divider()
                 } else {
                     self.dsfailed = true
-                    self.logmsg("\nexploit failed.\n")
-                    globallogger.log("exploit failed.")
+                    self.dsready = false
+                    self.logmsg("\n(ds) Using game memory cheats mode (kernel exploit disabled)\n")
+                    globallogger.log("Game cheat mode active - kernel exploit not needed")
                     globallogger.divider()
                 }
                 self.dsprogress = 1.0
