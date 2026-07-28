@@ -27,7 +27,7 @@ func applySpeed(toPlayer playerAddr: UInt64) {
     guard playerAddr > 0x100000000 else { return }
 
     let enabled = isSpeedEnabled()
-    let multiplier = enabled ? getSpeedValue() : 1.0
+    var multiplier = enabled ? getSpeedValue() : 1.0
 
     ds_kwrite(playerAddr + OFFSET_SPEED_MULTIPLIER, &multiplier, 4)
 }
