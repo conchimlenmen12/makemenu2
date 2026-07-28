@@ -18,6 +18,11 @@ func larakcpath() -> String? {
 }
 
 func fetchkcache() -> Bool {
+    globallogger.log("(fetchkcache) kernel cache extraction not implemented in game cheat mode")
+    return false
+
+    // TODO: Kernel offset initialization needed for full implementation
+    /*
     guard off_proc_p_fd != 0,
           off_filedesc_fd_ofiles != 0,
           off_fileproc_fp_glob != 0,
@@ -28,6 +33,7 @@ func fetchkcache() -> Bool {
         globallogger.log("(fetchkcache) exploit or offsets not ready")
         return false
     }
+    */
 
     guard let kcpath = syskcpath() else {
         globallogger.log("(fetchkcache) failed to get kernelcache path")

@@ -687,10 +687,12 @@ final class laramgr: ObservableObject {
         logmsg("initializing remote call on \(process)...")
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            if process.withCString({ proc_find_by_name($0) == 0 }) {
-                wake_up_daemon(sbProc, serviceName, framework)
-                sleep(1) // give the daemon some time to start up
-            }
+            // Note: proc_find_by_name requires kernel offsets initialization
+            // Skip daemon wake-up for game cheat mode
+            // if process.withCString({ proc_find_by_name($0) == 0 }) {
+            //     wake_up_daemon(sbProc, serviceName, framework)
+            //     sleep(1)
+            // }
             
             let proc = RemoteCall(process: process, useMigFilterBypass: migbypass)
             completion?(proc)
