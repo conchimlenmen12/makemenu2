@@ -51,9 +51,7 @@ class GameDetector: ObservableObject {
 
     // Check if Free Fire process is running
     private func isGameProcessRunning() -> Bool {
-        guard ds_is_ready() else { return false }
-
-        let processName = "FreeFireMAX"
+        let processNames = ["FreeFireMAX", "FreeFire", "com.dts.freefireth"]
 
         var len: size_t = 0
         var mib: [Int32] = [
@@ -64,10 +62,14 @@ class GameDetector: ObservableObject {
         ]
 
         if sysctl(&mib, 4, nil, &len, nil, 0) != 0 {
+            globallogger.log("[GameDetector] sysctl size query failed")
             return false
         }
 
-        guard len > 0 else { return false }
+        guard len > 0 else {
+            globallogger.log("[GameDetector] No process data")
+            return false
+        }
 
         var processes = [kinfo_proc](
             repeating: kinfo_proc(),
@@ -75,6 +77,7 @@ class GameDetector: ObservableObject {
         )
 
         if sysctl(&mib, 4, &processes, &len, nil, 0) != 0 {
+            globallogger.log("[GameDetector] sysctl read failed")
             return false
         }
 
@@ -82,21 +85,23 @@ class GameDetector: ObservableObject {
             len / MemoryLayout<kinfo_proc>.size
 
         for i in 0..<processCount {
-            // Must be var because p_comm is passed as an inout argument.
             var process = processes[i]
 
             let name = String(
                 cString: &process.kp_proc.p_comm.0
             )
 
-            if name.contains(processName) {
-                globallogger.log(
-                    "[GameDetector] Found \(name) running"
-                )
-                return true
+            for processName in processNames {
+                if name.contains(processName) || name == processName {
+                    globallogger.log(
+                        "[GameDetector] Found \(name) running"
+                    )
+                    return true
+                }
             }
         }
 
+        globallogger.log("[GameDetector] Free Fire process not found")
         return false
     }
 
