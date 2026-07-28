@@ -76,7 +76,7 @@ struct ContentView: View {
                 }
             }) {
                 Button("Run Exploit", action: {
-                    offsets_init()
+                    // offsets_init() not needed in game cheat mode
                     mgr.run()
                 })
                 .disabled(mgr.dsready || mgr.dsrunning || isdebugged())
@@ -91,9 +91,9 @@ struct ContentView: View {
                         let fetched = fetchkcache()
 
                         if fetched {
-                            let dlkc = dlkcache()
+                            // dlkcache() not available in game cheat mode
                             DispatchQueue.main.async {
-                                mgr.hasOffsets = dlkc
+                                mgr.hasOffsets = false
                                 dlingkcache = false
                             }
                             return

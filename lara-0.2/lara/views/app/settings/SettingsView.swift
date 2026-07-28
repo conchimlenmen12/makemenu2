@@ -79,9 +79,10 @@ struct SettingsView: View {
                                 let fetched = fetchkcache()
 
                                 if fetched {
-                                    let dlkc = dlkcache()
+                                    // dlkcache() not available in game cheat mode
+                                    // let dlkc = dlkcache()
                                     DispatchQueue.main.async {
-                                        mgr.hasOffsets = dlkc
+                                        mgr.hasOffsets = false
                                         dlingkcache = false
                                     }
                                     return
@@ -230,7 +231,8 @@ struct SettingsView: View {
                                     try fm.removeItem(at: dest)
                                 }
                                 try fm.copyItem(at: url, to: dest)
-                                ok = dlkcache()
+                                // dlkcache() not available in game cheat mode
+                                ok = false
                             } catch {
                                 print("failed to import kernelcache: \(error)")
                                 ok = false
