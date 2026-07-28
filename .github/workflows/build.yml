@@ -26,8 +26,13 @@ jobs:
 
       - name: show xcode version
         run: |
+          echo "===== XCODE ====="
           xcodebuild -version
+          echo
+          echo "===== XCODE SELECT ====="
           xcode-select -p
+          echo
+          echo "===== SWIFT ====="
           swift --version
 
       - name: install ldid
@@ -37,30 +42,111 @@ jobs:
           ldid -h || true
           which ldid
 
-      - name: build
+      - name: prepare build directory
         run: |
+          mkdir -p lara-0.2/build
+          rm -f lara-0.2/build/xcodebuild.log
+
+      - name: build
+        id: build_ipa
+        shell: bash
+        run: |
+          set +e
+
           cd lara-0.2
+
           chmod +x scripts/build_ipa.sh
-          ./scripts/build_ipa.sh
+
+          echo "========================================"
+          echo "START BUILD"
+          echo "========================================"
+
+          ./scripts/build_ipa.sh 2>&1 | tee build/workflow-build.log
+
+          BUILD_EXIT=${PIPESTATUS[0]}
+
+          echo
+          echo "========================================"
+          echo "BUILD EXIT CODE: $BUILD_EXIT"
+          echo "========================================"
+
+          exit "$BUILD_EXIT"
+
+      - name: show build errors
+        if: always()
+        shell: bash
+        run: |
+          echo "========================================"
+          echo "SEARCHING FOR SWIFT ERRORS"
+          echo "========================================"
+
+          if [ -f lara-0.2/build/xcodebuild.log ]; then
+            echo "Found: lara-0.2/build/xcodebuild.log"
+
+            echo
+            echo "===== ERROR LINES ====="
+            grep -nE "error:|fatal error:" \
+              lara-0.2/build/xcodebuild.log \
+              || true
+
+            echo
+            echo "===== GAMEDETECTOR ====="
+            grep -nE "GameDetector.swift|Combine" \
+              lara-0.2/build/xcodebuild.log \
+              || true
+
+            echo
+            echo "===== SPEEDFF ====="
+            grep -nE "SpeedFF.swift" \
+              lara-0.2/build/xcodebuild.log \
+              || true
+
+          else
+            echo "WARNING: xcodebuild.log was not created."
+
+            if [ -f lara-0.2/build/workflow-build.log ]; then
+              echo
+              echo "===== LAST 300 LINES OF WORKFLOW BUILD ====="
+              tail -n 300 lara-0.2/build/workflow-build.log
+            fi
+          fi
 
       - name: show build files
         if: always()
+        shell: bash
         run: |
-          echo "===== BUILD DIRECTORY ====="
-          find lara-0.2/build -maxdepth 3 -type f -print 2>/dev/null || true
+          echo "========================================"
+          echo "BUILD DIRECTORY"
+          echo "========================================"
+
+          mkdir -p lara-0.2/build
+
+          find lara-0.2/build \
+            -maxdepth 3 \
+            -type f \
+            -print \
+            2>/dev/null || true
+
+      - name: upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_number }}
+          path: |
+            lara-0.2/build/xcodebuild.log
+            lara-0.2/build/workflow-build.log
+          if-no-files-found: warn
 
       - name: upload artifact (PR only)
-        if: github.event_name == 'pull_request'
+        if: success() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: lara-ipa
-          path: |
-            lara-0.2/build/lara.ipa
-            lara-0.2/build/xcodebuild.log
+          path: lara-0.2/build/lara.ipa
           if-no-files-found: error
 
       - name: upload release ipa
-        if: github.event_name != 'pull_request'
+        if: success() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: release-ipa
