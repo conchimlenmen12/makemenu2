@@ -15,7 +15,7 @@ struct procentry: Identifiable, Hashable {
 
 struct ToolsView: View {
     @ObservedObject private var mgr = laramgr.shared
-    @State private var isaslr: Bool = aslrstate
+    @State private var isaslr: Bool = false
     @State var showtoken: Bool = false
     @AppStorage("lara.sbx.issuedToken") private var token: String = ""
     @State private var issueclass: tokenclass = .rw
