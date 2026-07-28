@@ -53,7 +53,6 @@ class GameDetector: ObservableObject {
     private func isGameProcessRunning() -> Bool {
         guard ds_is_ready() else { return false }
 
-        // Try to get FF process PID via sysctl
         let processName = "FreeFireMAX"
 
         var len: size_t = 0
@@ -83,7 +82,9 @@ class GameDetector: ObservableObject {
             len / MemoryLayout<kinfo_proc>.size
 
         for i in 0..<processCount {
-            let process = processes[i]
+            // Must be var because p_comm is passed as an inout argument.
+            var process = processes[i]
+
             let name = String(
                 cString: &process.kp_proc.p_comm.0
             )
@@ -104,7 +105,6 @@ class GameDetector: ObservableObject {
         guard ds_is_ready() else { return false }
         guard isGameRunning else { return false }
 
-        // Simple check: try to read match game pointer
         let moduleBase = getUnityFrameworkBase()
 
         guard moduleBase > 0x100000000 else {
@@ -139,7 +139,6 @@ class GameDetector: ObservableObject {
             return false
         }
 
-        // If we can read a valid match object, player is in game
         return true
     }
 }
