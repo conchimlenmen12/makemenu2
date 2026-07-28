@@ -14,8 +14,8 @@
 #import "vfs.h"
 #import "sbx.h"
 #import "IconServices.h"
-#import "rc.h"
-#import "RemoteCall.h"
+// #import "rc.h"               // RemoteCall disabled for game cheat mode
+// #import "RemoteCall.h"       // RemoteCall disabled for game cheat mode
 
 #import <zlib.h>
 
