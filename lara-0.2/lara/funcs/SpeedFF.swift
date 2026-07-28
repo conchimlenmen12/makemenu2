@@ -23,7 +23,6 @@ func setSpeedValue(_ value: Float) {
 }
 
 func applySpeed(toPlayer playerAddr: UInt64) {
-    guard ds_is_ready() else { return }
     guard playerAddr > 0x100000000 else { return }
 
     let enabled = isSpeedEnabled()

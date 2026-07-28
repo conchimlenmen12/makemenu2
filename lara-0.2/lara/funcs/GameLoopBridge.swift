@@ -18,7 +18,6 @@ class GameLoopManager {
 
     func start() {
         guard !isRunning else { return }
-        guard ds_is_ready() else { return }
 
         isRunning = true
         startGameLoopHook()

@@ -57,7 +57,6 @@ class GameDetector: ObservableObject {
 
     // Check if player is in active match (not lobby)
     private func isPlayerInMatch() -> Bool {
-        guard ds_is_ready() else { return false }
         guard isGameRunning else { return false }
 
         let moduleBase = getUnityFrameworkBase()

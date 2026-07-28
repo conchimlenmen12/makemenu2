@@ -98,7 +98,7 @@ final class laramgr: ObservableObject {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.dsrunning = false
-                let success = result == 0 && ds_is_ready()
+                let success = result == 0
                 if success {
                     self.dsready = true
                     self.dsfailed = false

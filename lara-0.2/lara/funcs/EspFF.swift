@@ -52,16 +52,12 @@ func setEspEnabled(_ enabled: Bool) {
 }
 
 func initializeESP() -> Bool {
-    guard ds_is_ready() else {
-        globallogger.log("[ESP] Darksword not ready")
-        return false
-    }
     globallogger.log("[ESP] Initialized")
     return true
 }
 
 func updateESP() {
-    guard isEspEnabled() && ds_is_ready() else { return }
+    guard isEspEnabled() else { return }
 
     do {
         try detectAndDrawEnemies()

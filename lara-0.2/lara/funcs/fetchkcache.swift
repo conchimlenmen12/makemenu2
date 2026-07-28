@@ -18,8 +18,7 @@ func larakcpath() -> String? {
 }
 
 func fetchkcache() -> Bool {
-    guard ds_is_ready(),
-          off_proc_p_fd != 0,
+    guard off_proc_p_fd != 0,
           off_filedesc_fd_ofiles != 0,
           off_fileproc_fp_glob != 0,
           off_fileglob_fg_data != 0,
