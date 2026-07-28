@@ -10,9 +10,9 @@
 #import "offsets.h"
 #import "utils.h"
 #import "vnode.h"
-#import "apfs.h"
-#import "vfs.h"
-#import "sbx.h"
+// #import "apfs.h"             // Disabled for game cheat mode
+// #import "vfs.h"              // VFS redirect disabled for game cheat mode
+// #import "sbx.h"              // Sandbox escape disabled for game cheat mode
 #import "IconServices.h"
 // #import "rc.h"               // RemoteCall disabled for game cheat mode
 // #import "RemoteCall.h"       // RemoteCall disabled for game cheat mode

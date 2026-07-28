@@ -161,6 +161,8 @@ final class laramgr: ObservableObject {
         showrespring = true
     }
     
+    // VFS and Sandbox escape disabled for game cheat mode
+    /*
     func vfsinit(completion: ((Bool) -> Void)? = nil) {
         guard dsready, hasOffsets, !vfsrunning else { return }
         vfs_setlogcallback(laramgr.vfslogcallback)
@@ -173,7 +175,7 @@ final class laramgr: ObservableObject {
         vfsfailed = false
         vfsrunning = true
         vfsprogress = 0.0
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let r = vfs_init()
             DispatchQueue.main.async {
@@ -192,15 +194,15 @@ final class laramgr: ObservableObject {
             }
         }
     }
-    
+
     func sbxescape(completion: ((Bool) -> Void)? = nil) {
         guard dsready, hasOffsets, !sbxrunning else { return }
         sbxattempted = true
         sbxfailed = false
         sbxrunning = true
-        
+
         sbx_setlogcallback(laramgr.sbxlogcallback)
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let r = sbx_escape(ds_get_our_proc())
             DispatchQueue.main.async {
@@ -218,7 +220,10 @@ final class laramgr: ObservableObject {
             }
         }
     }
-    
+    */
+
+    // VFS/SBX callbacks disabled
+    /*
     private static let sbxlogcallback: @convention(c) (UnsafePointer<CChar>?) -> Void = { msg in
         guard let msg = msg else { return }
         let s = String(cString: msg)
@@ -226,7 +231,7 @@ final class laramgr: ObservableObject {
             laramgr.shared.logmsg("(sbx) " + s)
         }
     }
-    
+
     private static let vfslogcallback: @convention(c) (UnsafePointer<CChar>?) -> Void = { msg in
         guard let msg = msg else { return }
         let s = String(cString: msg)
@@ -235,7 +240,8 @@ final class laramgr: ObservableObject {
             laramgr.shared.logmsg("(vfs) " + s)
         }
     }
-    
+    */
+
     func vfslistdir(path: String) -> [(name: String, isDir: Bool)]? {
         guard vfsready else {
             logmsg(" listdir: not ready (\(path))")
