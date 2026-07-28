@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Darwin
 
 // MARK: - Game Detection (similar to scr tipa)
 
