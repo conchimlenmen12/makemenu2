@@ -19,6 +19,8 @@ struct TweaksView: View {
                         .disabled(!mgr.dsready)
                     NavigationLink("Free Fire ESP", destination: EspFFView(mgr: mgr))
                         .disabled(!mgr.dsready)
+                    NavigationLink("Free Fire Speed", destination: SpeedFFView(mgr: mgr))
+                        .disabled(!mgr.dsready)
                 }
             }
             .disabled(!mgr.dsready)
