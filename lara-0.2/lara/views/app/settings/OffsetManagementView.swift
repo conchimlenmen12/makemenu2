@@ -88,12 +88,15 @@ struct OffsetManagementView: View {
 
     private func persistoffs() {
         applyoffs()
-        savealloffsets()
+        // savealloffsets() not available in game cheat mode
     }
 
     private func initoffs() {
         guard !loaded else { return }
+        loaded = true
 
+        // Kernel offsets not initialized in game cheat mode
+        /*
         editable = [
             "off_inpcb_inp_list_le_next": hex(off_inpcb_inp_list_le_next),
             "off_inpcb_inp_pcbinfo": hex(off_inpcb_inp_pcbinfo),
@@ -180,11 +183,15 @@ struct OffsetManagementView: View {
             "VM_MIN_KERNEL_ADDRESS": hex(VM_MIN_KERNEL_ADDRESS),
             "VM_MAX_KERNEL_ADDRESS": hex(VM_MAX_KERNEL_ADDRESS)
         ]
-        
+
         loaded = true
+        */
     }
 
     private func applyoffs() {
+        // Kernel offsets not applied in game cheat mode
+        return
+        /*
         func hexparse(_ raw: String) -> String {
             raw
                 .replacingOccurrences(of: "0x", with: "")
@@ -295,5 +302,6 @@ struct OffsetManagementView: View {
         if t1sz_boot > 0 && t1sz_boot < 64 {
             pac_mask = ~(((1 as UInt64) << (64 - t1sz_boot)) - 1)
         }
+        */
     }
 }
