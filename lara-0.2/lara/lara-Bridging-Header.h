@@ -9,7 +9,7 @@
 #import "darksword.h"
 #import "offsets.h"
 #import "utils.h"
-#import "vnode.h"
+// #import "vnode.h"            // VNode operations disabled for game cheat mode
 // #import "apfs.h"             // Disabled for game cheat mode
 // #import "vfs.h"              // VFS redirect disabled for game cheat mode
 // #import "sbx.h"              // Sandbox escape disabled for game cheat mode
