@@ -52,12 +52,14 @@ struct lara: App {
                     }
                     .tag(taboptions.applying)
                 
-                // this has gotta fucking go
+                // Tweaks disabled for game cheat mode
+                /*
                 TweaksView(mgr: mgr)
                     .tabItem {
                         Image(systemName: "ant.fill")
                     }
                     .tag(taboptions.tweaks)
+                */
                 
                 
                 // i'm gonna strangle you root (the weight of your actions will crush you)
