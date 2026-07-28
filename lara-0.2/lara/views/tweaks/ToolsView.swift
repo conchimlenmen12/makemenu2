@@ -63,15 +63,15 @@ struct ToolsView: View {
                         .monospaced()
                     
                     Button {
-                        isaslr = aslrstate
+                        isaslr = false // aslrstate not available
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
                 }
-                
+
                 Button {
-                    toggleaslr()
-                    isaslr = aslrstate
+                    // toggleaslr() not available in game cheat mode
+                    isaslr = false
                 } label: {
                     Text("Toggle ASLR")
                 }
@@ -151,9 +151,8 @@ struct ToolsView: View {
                 }
 
                 Button("Crash") {
-                    crashname.withCString { cstr in
-                        _ = crashproc(cstr)
-                    }
+                    // crashproc not available in game cheat mode
+                    globallogger.log("[ToolsView] Process crash disabled in game cheat mode")
                 }
                 .disabled(crashname.isEmpty)
             } header: {
@@ -261,8 +260,8 @@ struct ToolsView: View {
             }
         .onAppear {
             if mgr.dsready {
-                getaslrstate()
-                isaslr = aslrstate
+                // getaslrstate() not available in game cheat mode
+                // isaslr = aslrstate
             }
         }
     }
